@@ -6,7 +6,10 @@ import time
 
 def create_user(iam, user_name):
     """Create the IAM user and return its ARN."""
-    iam.create_user(UserName=user_name)
+    try:
+        iam.create_user(UserName=user_name)
+    except iam.exceptions.EntityAlreadyExistsException:
+        pass
     return iam.get_user(UserName=user_name)['User']['Arn']
 
 
