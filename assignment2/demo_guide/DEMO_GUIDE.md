@@ -274,10 +274,10 @@ uv run python assignment2/create_resources.py
 - 右上 **Deploy API** → **Stage** 选 **New stage** → Stage name 填 `prod` → **Deploy** —— *为什么*：API 要部署到一个 stage 才有公网地址。
 - 部署后在 **Stages → prod** 看到 **Invoke URL**，形如
   `https://abc123.execute-api.us-east-1.amazonaws.com/prod`
-- https://t6lgmwhgr0.execute-api.us-east-1.amazonaws.com/prod
+
 - **完整的 API 地址 = Invoke URL + `/plot`**，即
   `https://abc123.execute-api.us-east-1.amazonaws.com/prod/plot`
-- https://t6lgmwhgr0.execute-api.us-east-1.amazonaws.com/prod/plot
+
 - 把这个完整地址记下来，就是下一步要填的 `PLOT_API_URL`。
 
 ---
