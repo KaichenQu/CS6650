@@ -23,6 +23,11 @@ GSIPK_VALUE = 'ALL'
 
 PLOT_KEY = 'plot'
 
+# teardown deletes every function/role/layer/REST API whose name starts with
+# one of these prefixes, so it catches resources even when AWS appended a
+# random suffix (e.g. console-created roles like cs6620-a2-driver-role-62e9pljd).
+RESOURCE_PREFIXES = ('cs6620-a2', 'size-tracking-lambda')
+
 LAYER_NAME = 'cs6620-a2-matplotlib'
 
 SIZE_TRACKING_FUNCTION = 'cs6620-a2-size-tracking'

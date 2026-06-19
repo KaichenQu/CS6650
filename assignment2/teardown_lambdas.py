@@ -1,6 +1,10 @@
 """Tears down everything deploy_lambdas.py created: the three lambdas, their
 IAM roles, the matplotlib layer, and the API Gateway REST API.
 
+Matches resources by config.RESOURCE_PREFIXES rather than exact names, so it also
+catches resources whose names AWS suffixed (e.g. console-created roles like
+cs6620-a2-driver-role-62e9pljd). AWS service-linked roles are never touched.
+
 Does not touch the bucket or DynamoDB table — use cleanup.py for those.
 """
 
@@ -9,58 +13,73 @@ from botocore.exceptions import ClientError
 
 import config
 
-BASIC_EXEC_POLICY_ARN = 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+PREFIXES = config.RESOURCE_PREFIXES
 
 
-def delete_function(lam, name):
-    try:
-        lam.delete_function(FunctionName=name)
-        print('Deleted function:', name)
-    except ClientError as err:
-        if err.response['Error']['Code'] != 'ResourceNotFoundException':
-            raise
-        print('Function not found:', name)
+def delete_functions(lam):
+    found = False
+    paginator = lam.get_paginator('list_functions')
+    for page in paginator.paginate():
+        for fn in page['Functions']:
+            if fn['FunctionName'].startswith(PREFIXES):
+                lam.delete_function(FunctionName=fn['FunctionName'])
+                print('Deleted function:', fn['FunctionName'])
+                found = True
+    if not found:
+        print('No functions found with prefix:', PREFIXES)
+
+
+def delete_roles(iam):
+    found = False
+    paginator = iam.get_paginator('list_roles')
+    for page in paginator.paginate():
+        for role in page['Roles']:
+            name = role['RoleName']
+            # Never delete AWS service-linked roles.
+            if role['Path'].startswith('/aws-service-role/'):
+                continue
+            if not name.startswith(PREFIXES):
+                continue
+            delete_role(iam, name)
+            found = True
+    if not found:
+        print('No roles found with prefix:', PREFIXES)
 
 
 def delete_role(iam, role_name):
-    try:
-        iam.detach_role_policy(RoleName=role_name, PolicyArn=BASIC_EXEC_POLICY_ARN)
-    except ClientError as err:
-        if err.response['Error']['Code'] != 'NoSuchEntity':
-            raise
-
-    try:
-        iam.delete_role_policy(RoleName=role_name, PolicyName=role_name + '-inline')
-    except ClientError as err:
-        if err.response['Error']['Code'] != 'NoSuchEntity':
-            raise
-
-    try:
-        iam.delete_role(RoleName=role_name)
-        print('Deleted role:', role_name)
-    except ClientError as err:
-        if err.response['Error']['Code'] != 'NoSuchEntity':
-            raise
-        print('Role not found:', role_name)
+    for policy in iam.list_attached_role_policies(RoleName=role_name)['AttachedPolicies']:
+        iam.detach_role_policy(RoleName=role_name, PolicyArn=policy['PolicyArn'])
+    for policy_name in iam.list_role_policies(RoleName=role_name)['PolicyNames']:
+        iam.delete_role_policy(RoleName=role_name, PolicyName=policy_name)
+    iam.delete_role(RoleName=role_name)
+    print('Deleted role:', role_name)
 
 
-def delete_layer(lam):
-    versions = lam.list_layer_versions(LayerName=config.LAYER_NAME).get('LayerVersions', [])
-    for v in versions:
-        lam.delete_layer_version(LayerName=config.LAYER_NAME, VersionNumber=v['Version'])
-        print('Deleted layer version:', config.LAYER_NAME, v['Version'])
-    if not versions:
-        print('Layer not found:', config.LAYER_NAME)
+def delete_layers(lam):
+    found = False
+    paginator = lam.get_paginator('list_layers')
+    for page in paginator.paginate():
+        for layer in page['Layers']:
+            if not layer['LayerName'].startswith(PREFIXES):
+                continue
+            versions = lam.list_layer_versions(LayerName=layer['LayerName']).get('LayerVersions', [])
+            for v in versions:
+                lam.delete_layer_version(LayerName=layer['LayerName'], VersionNumber=v['Version'])
+                print('Deleted layer version:', layer['LayerName'], v['Version'])
+                found = True
+    if not found:
+        print('No layers found with prefix:', PREFIXES)
 
 
-def delete_rest_api(apigw):
-    apis = apigw.get_rest_apis(limit=500).get('items', [])
-    for api in apis:
-        if api['name'] == config.API_NAME:
+def delete_rest_apis(apigw):
+    found = False
+    for api in apigw.get_rest_apis(limit=500).get('items', []):
+        if api['name'].startswith(PREFIXES):
             apigw.delete_rest_api(restApiId=api['id'])
-            print('Deleted REST API:', api['id'])
-            return
-    print('REST API not found:', config.API_NAME)
+            print('Deleted REST API:', api['name'], api['id'])
+            found = True
+    if not found:
+        print('No REST APIs found with prefix:', PREFIXES)
 
 
 def main():
@@ -70,16 +89,10 @@ def main():
     iam = session.client('iam')
     apigw = session.client('apigateway')
 
-    delete_function(lam, config.SIZE_TRACKING_FUNCTION)
-    delete_function(lam, config.PLOTTING_FUNCTION)
-    delete_function(lam, config.DRIVER_FUNCTION)
-
-    delete_role(iam, config.SIZE_TRACKING_ROLE)
-    delete_role(iam, config.PLOTTING_ROLE)
-    delete_role(iam, config.DRIVER_ROLE)
-
-    delete_layer(lam)
-    delete_rest_api(apigw)
+    delete_functions(lam)
+    delete_roles(iam)
+    delete_layers(lam)
+    delete_rest_apis(apigw)
 
     print('\nDone.')
 
