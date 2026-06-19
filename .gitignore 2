@@ -14,7 +14,3 @@ wheels/
 
 # OS files
 .DS_Store
-
-# Lambda layer build artifacts (assignment2)
-assignment2/layer_build/
-assignment2/matplotlib-layer.zip

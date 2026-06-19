@@ -23,6 +23,20 @@ GSIPK_VALUE = 'ALL'
 
 PLOT_KEY = 'plot'
 
+LAYER_NAME = 'cs6620-a2-matplotlib'
+
+SIZE_TRACKING_FUNCTION = 'cs6620-a2-size-tracking'
+PLOTTING_FUNCTION = 'cs6620-a2-plotting'
+DRIVER_FUNCTION = 'cs6620-a2-driver'
+
+SIZE_TRACKING_ROLE = 'cs6620-a2-size-tracking-role'
+PLOTTING_ROLE = 'cs6620-a2-plotting-role'
+DRIVER_ROLE = 'cs6620-a2-driver-role'
+
+API_NAME = 'cs6620-a2-plot-api'
+API_RESOURCE_PATH = 'plot'
+API_STAGE = 'prod'
+
 
 def bucket_name(account_id):
     # Bucket names are globally unique; the account id keeps it unique.

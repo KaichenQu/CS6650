@@ -33,6 +33,15 @@ def create_bucket(s3, bucket, region):
         else:
             raise
 
+    # A bucket recreated right after deletion can briefly retain old objects
+    # (e.g. a leftover `plot`). Empty it so the demo starts from a clean slate.
+    objects = s3.list_objects_v2(Bucket=bucket).get('Contents', [])
+    if objects:
+        s3.delete_objects(
+            Bucket=bucket,
+            Delete={'Objects': [{'Key': o['Key']} for o in objects]})
+        print('Removed leftover objects:', [o['Key'] for o in objects])
+
 
 def create_table(dynamodb):
     try:

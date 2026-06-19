@@ -46,6 +46,46 @@ and table now exist and are empty.
 
 ---
 
+## CLI setup (replaces Console setup B-E below)
+
+`deploy_lambdas.py` creates everything in steps B-E via boto3: IAM roles, the
+matplotlib layer, the three lambdas, the S3 trigger, and the API Gateway REST
+API, then wires the driver lambda's env vars. It is idempotent — rerunning it
+updates existing resources instead of failing.
+
+Build the matplotlib layer zip once (not committed — see `.gitignore`):
+
+```bash
+mkdir -p assignment2/layer_build/python
+python3 -m pip install matplotlib pillow -t assignment2/layer_build/python \
+    --python-version 3.12 --platform manylinux2014_x86_64 --only-binary=:all:
+find assignment2/layer_build/python -name tests -type d -exec rm -rf {} +
+find assignment2/layer_build/python -name __pycache__ -type d -exec rm -rf {} +
+find assignment2/layer_build/python -name "*.pyi" -delete
+rm -rf assignment2/layer_build/python/{PIL,pillow.libs,pillow-*.dist-info,mpl_toolkits,matplotlib/mpl-data/sample_data}
+cd assignment2/layer_build && zip -r -q ../matplotlib-layer.zip python -x "*.dist-info/RECORD" && cd ../..
+```
+
+> Note: matplotlib's Agg/PNG backend needs Pillow at import time — keep it in
+> the layer even though the stripped build above removes other extras.
+
+Then deploy:
+
+```bash
+uv run python assignment2/deploy_lambdas.py
+```
+
+This prints the `PLOT_API_URL` and the invoke command for the demo:
+
+```bash
+aws lambda invoke --profile admin --function-name cs6620-a2-driver /tmp/out.json
+```
+
+Skip to [Demo](#demo) below. The "Console setup" section is the manual
+equivalent if you'd rather click through the AWS console.
+
+---
+
 ## Console setup
 
 ### A. matplotlib layer (for the plotting lambda)
@@ -129,7 +169,9 @@ runtime Python 3.12.
 3. Manually invoke the driver lambda (console → Test).
 4. TAs check the DynamoDB table (4 rows: sizes ≈ 18, 27, 0, 2) and download the
    `plot` object from the bucket (4-point curve + red "Historical high" line ≈ 27).
-5. Cleanup: `uv run python assignment2/cleanup.py` (the matplotlib layer is kept).
+5. Cleanup: `uv run python assignment2/cleanup.py` (deletes the bucket + table).
+   To also remove the lambdas, IAM roles, layer, and API Gateway created by
+   `deploy_lambdas.py`, run `uv run python assignment2/teardown_lambdas.py`.
 
 ## Notes
 

@@ -39,8 +39,8 @@ def recent_points(bucket, now_ms):
     """Query the last 10 seconds for one bucket; return sorted (ts, size) lists."""
     resp = dynamodb.query(
         TableName=TABLE_NAME,
-        KeyConditionExpression='{} = :b AND {} BETWEEN :start AND :now'.format(
-            ATTR_BUCKET, ATTR_TIMESTAMP),
+        KeyConditionExpression='{} = :b AND #ts BETWEEN :start AND :now'.format(ATTR_BUCKET),
+        ExpressionAttributeNames={'#ts': ATTR_TIMESTAMP},
         ExpressionAttributeValues={
             ':b': {'S': bucket},
             ':start': {'N': str(now_ms - WINDOW_MS)},
