@@ -18,3 +18,10 @@ wheels/
 # Lambda layer build artifacts (assignment2)
 assignment2/layer_build/
 assignment2/matplotlib-layer.zip
+
+# Lambda layer artifact + CDK output (assignment3)
+assignment3/layers/matplotlib-layer.zip
+assignment3/cdk.out/
+
+# Submission build artifacts
+assignment3_submit.zip
